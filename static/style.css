@@ -1,0 +1,235 @@
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --border-color: #30363d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --accent: #58a6ff;
+  --accent-hover: #79b8ff;
+  --radius: 6px;
+  --transition: 0.15s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  font-size: 0.875rem;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* Sidebar toggle button */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+
+.sidebar-toggle:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.sidebar-toggle-icon {
+  display: block;
+  width: 1.25rem;
+  height: 2px;
+  background-color: currentColor;
+  box-shadow: 0 -6px 0 currentColor, 0 6px 0 currentColor;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 200;
+  width: 100%;
+  max-width: 14rem;
+  padding: 0.5rem 0;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  transform: translateX(0);
+  transition: transform var(--transition);
+}
+
+body.sidebar-collapsed .sidebar {
+  transform: translateX(-100%);
+}
+
+.sidebar-sticky {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 48px;
+  height: calc(100vh - 48px);
+  padding-top: 0.5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.sidebar .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  margin: 0 0.5rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: var(--radius);
+  transition: color var(--transition), background-color var(--transition);
+}
+
+.sidebar .nav-link:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.sidebar .nav-link.active {
+  color: var(--accent);
+  background-color: rgba(88, 166, 255, 0.1);
+  border-left: 3px solid var(--accent);
+  margin-left: calc(0.5rem - 3px);
+  padding-left: calc(1rem - 3px);
+}
+
+.sidebar .nav-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sidebar .nav-link.active:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sidebar .nav-link .feather {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.sidebar .nav-link.active .feather {
+  opacity: 1;
+}
+
+.sidebar-heading {
+  padding: 0.75rem 1rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.sidebar-heading a {
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.sidebar-heading a:hover {
+  color: var(--accent);
+}
+
+/* Main content */
+main {
+  min-height: calc(100vh - 48px);
+  padding: 1.5rem;
+  background-color: var(--bg-primary);
+}
+
+main .border-bottom {
+  border-color: var(--border-color) !important;
+}
+
+/* Desktop: clear sidebar, center main in remaining space */
+@media (min-width: 768px) {
+  .container-fluid .row {
+    padding-left: 14rem; /* Offset fixed sidebar */
+    transition: padding-left var(--transition);
+  }
+
+  body.sidebar-collapsed .container-fluid .row {
+    padding-left: 0;
+  }
+
+  main {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 72rem;
+    transition: margin var(--transition);
+  }
+}
+
+/* Mobile: sidebar overlays when open, no offset when collapsed */
+@media (max-width: 767px) {
+  .container-fluid .row {
+    padding-left: 0;
+  }
+
+  .sidebar {
+    box-shadow: 4px 0 1rem rgba(0, 0, 0, 0.3);
+  }
+
+  body.sidebar-collapsed .sidebar {
+    pointer-events: none; /* Allow clicks through when hidden */
+  }
+}
+
+/* Navbar */
+.navbar {
+  background-color: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.navbar-brand {
+  padding: 0.75rem 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary) !important;
+  text-decoration: none;
+  border-left: 1px solid var(--border-color);
+}
+
+.navbar-brand:hover {
+  color: var(--text-primary) !important;
+  opacity: 0.9;
+}
+
+/* Footer */
+footer {
+  padding: 1rem 1.5rem;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+footer a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+footer a:hover {
+  color: var(--accent-hover);
+}
+
+/* Utilities */
+.border-bottom {
+  border-bottom: 1px solid var(--border-color);
+}
