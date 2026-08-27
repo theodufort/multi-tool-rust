@@ -7,6 +7,7 @@ pub fn index(uri: &Origin<'_>) -> Template {
         "index",
         context! {
             uri: uri,
+            sidebar: super::tools::sidebar_links(),
         },
     )
 }

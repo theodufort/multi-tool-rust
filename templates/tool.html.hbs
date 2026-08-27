@@ -1,0 +1,26 @@
+{{#*inline "page"}}
+<div class="container-fluid">
+  <div class="row">
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-sticky">
+        {{> tools-sidebar}}
+      </div>
+    </nav>
+    <main role="main" class="col-md-9 ml-sm-auto col-lg-10 pt-3 px-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+        <h1 class="h4">{{title}}</h1>
+      </div>
+      <div class="card mb-4">
+        <div class="card-body">
+          <label class="form-label" for="tool-input">Input</label>
+          <textarea class="form-control" rows="6" id="tool-input" placeholder="Type or paste text...">{{input}}</textarea>
+          <button class="btn btn-primary mt-2" id="run-btn">Run</button>
+          <label class="form-label mt-3" for="tool-output">Output</label>
+          <textarea class="form-control" rows="6" id="tool-output" readonly>{{output}}</textarea>
+          <pre id="result" class="mt-3">{{output}}</pre>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+{{/inline}} {{> layout}}
