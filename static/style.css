@@ -213,6 +213,7 @@ main .border-bottom {
     padding-left: 0;
   }
 
+
   main {
     margin-left: auto;
     margin-right: auto;
@@ -274,6 +275,19 @@ footer a {
 
 footer a:hover {
   color: var(--accent-hover);
+}
+
+/* Desktop: footer clears the fixed sidebar, like main content does. */
+/* Must come after the base footer rule so it wins the cascade. */
+@media (min-width: 768px) {
+  footer {
+    padding-left: calc(14rem + 1.5rem);
+    transition: padding-left var(--transition);
+  }
+
+  body.sidebar-collapsed footer {
+    padding-left: 1.5rem;
+  }
 }
 
 .footer-links {
