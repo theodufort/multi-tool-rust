@@ -1,2 +1,7 @@
 [default]
+# 0.0.0.0 is required: Docker publishes the port to the container's
+# Ethernet IP, not its loopback. Rocket's default of 127.0.0.1 binds
+# only to loopback, so the published host port (8093) gets connection
+# refused when the app runs in a container.
+address = "0.0.0.0"
 port = 8091
