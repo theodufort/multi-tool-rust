@@ -24,6 +24,9 @@ if ! flock -w "$LOCK_TIMEOUT" 9; then
   exit 1
 fi
 
+# ── Helpers ────────────────────────────────────────────────────
+timestamp() { date '+%Y-%m-%d %H:%M:%S'; }
+
 log() {
   local msg="[$(timestamp)] $*"
   echo "$msg" | tee -a "$LOG_FILE"
