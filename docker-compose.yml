@@ -4,6 +4,7 @@ services:
     image: multi-tool-rust
     container_name: multi-tool-rust
     ports:
-      # host:container — the container always listens on 8093 (Rocket.toml).
+      # host:container — the container listens on the port from Rocket.toml
+      # (currently 8091); change the LEFT side to publish on another host port.
       - "8093:8091"
     restart: unless-stopped
