@@ -276,6 +276,30 @@ footer a:hover {
   color: var(--accent-hover);
 }
 
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.github-link:hover {
+  color: var(--text-primary);
+}
+
+.github-icon {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
 /* Tool page */
 .tool-slug {
   font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, monospace;
