@@ -10,9 +10,19 @@ APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 LOG_FILE="/var/log/multi-tool-rust/deploy.log"
 COMPOSE_FILE="docker-compose.yml"
 MAX_LOG_SIZE=10485760  # 10 MB
+LOCK_FILE="/var/run/multi-tool-rust-deploy.lock"
+LOCK_TIMEOUT=1500  # ~25 min: covers full build + up
 
-# ── Helpers ────────────────────────────────────────────────────
-timestamp() { date '+%Y-%m-%d %H:%M:%S'; }
+# ── Concurrency guard ───────────────────────────────────────────
+# adnanh/webhook can trigger two deploys back-to-back (e.g. two quick
+# pushes). Interleaved `docker compose down/up` calls corrupt the
+# running stack, so only one deploy may run at a time.
+mkdir -p "$(dirname "$LOCK_FILE")"
+exec 9>"$LOCK_FILE"
+if ! flock -w "$LOCK_TIMEOUT" 9; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Another deploy is in progress -- aborting" >&2
+  exit 1
+fi
 
 log() {
   local msg="[$(timestamp)] $*"
