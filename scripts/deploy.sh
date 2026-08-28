@@ -2,7 +2,11 @@
 set -euo pipefail
 
 # ── Configuration ──────────────────────────────────────────────
-APP_DIR="/opt/multi-tool-rust"
+# APP_DIR: explicit env override wins, otherwise the repo root —
+# the parent of the directory this script lives in. The adnanh/webhook
+# hook runs this script from the checkout dir, so this resolves to
+# the actual deploy location (e.g. /storage_block/multi-tool-rust).
+APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 LOG_FILE="/var/log/multi-tool-rust/deploy.log"
 COMPOSE_FILE="docker-compose.yml"
 MAX_LOG_SIZE=10485760  # 10 MB
@@ -29,11 +33,22 @@ rotate_log
 log "===== DEPLOY STARTED ====="
 
 # ── Pull latest code ───────────────────────────────────────────
-log "Pulling latest changes from main..."
 cd "$APP_DIR"
-git fetch origin main
-git reset --hard origin/main
-log "Code pulled successfully"
+log "Deploying from $APP_DIR"
+
+if [[ -d .git ]] && git remote get-url origin > /dev/null 2>&1; then
+  log "Pulling latest changes from main..."
+  git fetch origin main
+  git reset --hard origin/main
+  log "Code pulled successfully ($(git rev-parse --short HEAD))"
+else
+  log "No git origin remote -- deploying files as-is in $APP_DIR"
+fi
+
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+  log "ERROR: $COMPOSE_FILE not found in $APP_DIR"
+  exit 1
+fi
 
 # ── Docker Compose ─────────────────────────────────────────────
 log "Stopping existing containers..."
