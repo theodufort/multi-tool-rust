@@ -75,7 +75,7 @@ fi
 
 # App-level smoke test (Rocket listens on 8091 in the container,
 # published on the host port via docker-compose)
-curl -fsS --retry 3 --retry-delay 2 --retry-connrefused --max-time 10 http://localhost:8091/ > /dev/null
+curl -fsS --retry 3 --retry-delay 2 --retry-connrefused --max-time 10 http://localhost:8093/ > /dev/null
 log "HTTP smoke test passed (GET / -> 200)"
 
 log "All containers healthy"
