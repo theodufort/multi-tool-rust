@@ -1,0 +1,9 @@
+services:
+  multi-tool-rust:
+    build: .
+    image: multi-tool-rust
+    container_name: multi-tool-rust
+    ports:
+      # host:container — the container always listens on 8091 (Rocket.toml).
+      - "8091:8091"
+    restart: unless-stopped

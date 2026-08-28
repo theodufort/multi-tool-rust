@@ -1,0 +1,13 @@
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-sticky">
+        <div class="sidebar-search">
+            <input class="form-control sidebar-search-input" id="tool-search" type="search" placeholder="Search tools…"
+                aria-label="Search tools" autocomplete="off" spellcheck="false" />
+        </div>
+        <ul class="nav flex-column" id="sidebar-tools">
+            {{> tools-sidebar}}
+            <li id="sidebar-no-match" class="sidebar-no-match" hidden>No tools match <span
+                    id="sidebar-no-match-query"></span>.</li>
+        </ul>
+    </div>
+</nav>

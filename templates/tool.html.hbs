@@ -1,23 +1,53 @@
 {{#*inline "page"}}
 <div class="container-fluid">
   <div class="row">
-    <nav class="sidebar" id="sidebar">
-      <div class="sidebar-sticky">
-        {{> tools-sidebar}}
-      </div>
-    </nav>
+    {{> sidebar}}
     <main role="main" class="col-md-9 ml-sm-auto col-lg-10 pt-3 px-4">
       <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
-        <h1 class="h4">{{title}}</h1>
+        <h1 class="h4">{{label}}</h1>
+        <span class="tool-slug text-secondary">/api/{{title}}</span>
       </div>
-      <div class="card mb-4">
+      <div class="card mb-4" data-slug="{{title}}" data-action="{{action}}">
         <div class="card-body">
-          <label class="form-label" for="tool-input">Input</label>
-          <textarea class="form-control" rows="6" id="tool-input" placeholder="Type or paste text...">{{input}}</textarea>
-          <button class="btn btn-primary mt-2" id="run-btn">Run</button>
-          <label class="form-label mt-3" for="tool-output">Output</label>
-          <textarea class="form-control" rows="6" id="tool-output" readonly>{{output}}</textarea>
-          <pre id="result" class="mt-3">{{output}}</pre>
+          <div class="tool-field">
+            <label class="form-label" for="tool-input">Input</label>
+            <textarea class="form-control tool-textarea" rows="6" id="tool-input"
+              placeholder="Type or paste text...">{{input}}</textarea>
+            <div class="form-text">Updates live while you type &middot; Ctrl+Enter to run</div>
+          </div>
+          {{#if needs_find_replace}}
+          <div class="row mt-2">
+            <div class="col-sm-6">
+              <label class="form-label" for="tool-find">Find</label>
+              <input class="form-control" id="tool-find" placeholder="text to find" value="{{find}}" />
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="tool-replace">Replace with</label>
+              <input class="form-control" id="tool-replace" placeholder="replacement" value="{{replace}}" />
+            </div>
+          </div>
+          {{/if}}
+          {{#if needs_action}}
+          <label class="form-label mt-2" for="tool-action">Action</label>
+          <select class="form-control" id="tool-action">
+            <option value="camel" {{#if sel_camel}}selected{{/if}}>camelCase</option>
+            <option value="snake" {{#if sel_snake}}selected{{/if}}>snake_case</option>
+            <option value="kebab" {{#if sel_kebab}}selected{{/if}}>kebab-case</option>
+            <option value="pascal" {{#if sel_pascal}}selected{{/if}}>PascalCase</option>
+          </select>
+          {{/if}}
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="form-label mb-0">Output</span>
+            <div class="btn-group">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="copy-btn"
+                title="Copy output to clipboard">Copy</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="clear-btn"
+                title="Clear all fields">Clear</button>
+              <button type="button" class="btn btn-primary btn-sm" id="run-btn"
+                title="Transform now (Ctrl+Enter)">Run</button>
+            </div>
+          </div>
+          <pre id="result" class="tool-result mt-2">{{output}}</pre>
         </div>
       </div>
     </main>

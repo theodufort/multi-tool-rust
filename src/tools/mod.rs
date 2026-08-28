@@ -5,7 +5,11 @@
 //! helper dispatches to the right transform by slug.
 
 /// Replace `count` occurrences of `find` with `replace` (count == 0 means all).
+/// An empty `find` matches nothing, so the input is returned unchanged.
 pub fn replace(input: &str, find: &str, replace: &str, count: usize) -> String {
+    if find.is_empty() {
+        return input.to_string();
+    }
     let mut out = String::new();
     let mut i = 0;
     let mut done = 0;
@@ -126,7 +130,10 @@ pub fn url_decode(input: &str) -> String {
                     i += 1;
                 }
             }
-            c => { out.push(c); i += 1; },
+            c => {
+                out.push(c);
+                i += 1;
+            }
         }
     }
     String::from_utf8_lossy(&out).into_owned()
@@ -193,7 +200,11 @@ fn named_entity_at(input: &str, i: usize) -> Option<(&str, usize)> {
 
 /// Lowercase hex-encode a UTF-8 string.
 pub fn hex_encode(input: &str) -> String {
-    input.as_bytes().iter().map(|b| format!("{:02x}", b)).collect()
+    input
+        .as_bytes()
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect()
 }
 
 /// Lowercase hex-decode a string.
@@ -213,8 +224,7 @@ pub fn hex_decode(input: &str) -> String {
 
 /// Base64-encode a UTF-8 string (standard alphabet, no padding).
 pub fn base64_encode(input: &str) -> String {
-    const ALPHABET: &[u8; 64] =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let bytes = input.as_bytes();
     let mut out = String::new();
     for chunk in bytes.chunks(3) {
@@ -264,19 +274,19 @@ fn val(c: char) -> Option<u32> {
 
 /// Strip non-ASCII characters (Unicode -> ASCII).
 pub fn unicode_strip(input: &str) -> String {
-    input
-        .chars()
-        .filter(|c| c.is_ascii())
-        .collect::<String>()
+    input.chars().filter(|c| c.is_ascii()).collect::<String>()
 }
 
-/// Count words, characters, lines, and bytes of the input.
+/// Count words, characters, lines, and bytes of the input (one per line).
 pub fn word_count(input: &str) -> String {
     let words = input.split_whitespace().count();
     let chars = input.chars().count();
     let lines = input.lines().count().max(1);
     let bytes = input.len();
-    format!("words:{} chars:{} lines:{} bytes:{}", words, chars, lines, bytes)
+    format!(
+        "words: {}\nchars: {}\nlines: {}\nbytes: {}",
+        words, chars, lines, bytes
+    )
 }
 
 /// Pretty-print JSON with 2-space indentation (compact separators).
@@ -312,16 +322,25 @@ pub fn slug(input: &str) -> String {
 }
 
 /// Convert text to a target case (camel, snake, kebab, pascal).
+/// Defaults to `camel` when no action is given.
 pub fn case(input: &str, action: Option<&str>) -> String {
-    let action = action.unwrap_or("kebab");
+    let action = action.unwrap_or("camel");
     let words: Vec<String> = input
         .split(|c: char| !c.is_alphanumeric() && c != '-')
         .filter(|w| !w.is_empty())
         .map(|w| w.to_string())
         .collect();
     match action {
-        "snake" => words.iter().map(|w| snake_case(w)).collect::<Vec<_>>().join("_"),
-        "kebab" => words.iter().map(|w| kebab_case(w)).collect::<Vec<_>>().join("-"),
+        "snake" => words
+            .iter()
+            .map(|w| snake_case(w))
+            .collect::<Vec<_>>()
+            .join("_"),
+        "kebab" => words
+            .iter()
+            .map(|w| kebab_case(w))
+            .collect::<Vec<_>>()
+            .join("-"),
         "camel" => {
             let mut s = String::new();
             for (i, w) in words.iter().enumerate() {
@@ -385,8 +404,35 @@ pub fn lorem(words: usize) -> String {
 }
 
 fn lorem_word(n: usize) -> String {
-    let l = ["lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "eiusmod", "tempor", "laborum", "magna"];
-    let r = ["aliquam", "nulla", "quis", "venenatis", "vestibulum", "integer", "mauris", "rhoncus", "tempus", "ultrices", "condimentum", "facilisis"];
+    let l = [
+        "lorem",
+        "ipsum",
+        "dolor",
+        "sit",
+        "amet",
+        "consectetur",
+        "adipiscing",
+        "elit",
+        "sed",
+        "eiusmod",
+        "tempor",
+        "laborum",
+        "magna",
+    ];
+    let r = [
+        "aliquam",
+        "nulla",
+        "quis",
+        "venenatis",
+        "vestibulum",
+        "integer",
+        "mauris",
+        "rhoncus",
+        "tempus",
+        "ultrices",
+        "condimentum",
+        "facilisis",
+    ];
     let idx = n % (l.len() + r.len());
     if idx < l.len() {
         l[idx].to_string()
@@ -397,10 +443,34 @@ fn lorem_word(n: usize) -> String {
 
 /// Dispatch to the transform for `slug`. Returns the output, or a short error
 /// string if the slug is unknown.
-pub fn run(slug: &str, input: &str, action: Option<&str>) -> String {
+///
+/// `action` is used by `case` (camel/snake/kebab/pascal), `lorem` (word count)
+/// and `replace` (occurrence count). `find` and `replace` feed the two find-and-
+/// replace tools.
+pub fn run(
+    slug: &str,
+    input: &str,
+    action: Option<&str>,
+    find: Option<&str>,
+    repl: Option<&str>,
+) -> String {
+    let find = find.unwrap_or("");
+    let repl = repl.unwrap_or("");
+    if (slug == "replace" || slug == "replace-all") && find.is_empty() && repl.is_empty() {
+        // No `find`/`replace` params supplied: apply the documented demo
+        // substitution (first `X` -> `_`, or every occurrence for
+        // `replace-all`). Keeps the endpoint deterministic and matching the
+        // catalog example, e.g. `aXbXc -> a_bXc`.
+        let count = if slug == "replace-all" {
+            usize::MAX
+        } else {
+            count_from_action(action)
+        };
+        return replace(input, "X", "_", count);
+    }
     match slug {
-        "replace" => replace(input, "", "", count_from_action(action)),
-        "replace-all" => replace_all(input, "", ""),
+        "replace" => replace(input, find, repl, count_from_action(action)),
+        "replace-all" => replace_all(input, find, repl),
         "collapse" => collapse(input),
         "uppercase" => uppercase(input),
         "lowercase" => lowercase(input),
@@ -422,7 +492,17 @@ pub fn run(slug: &str, input: &str, action: Option<&str>) -> String {
         "slug" => crate::tools::slug(input),
         "case" => case(input, action),
         "lorem" => {
-            let words = action.and_then(|a| a.parse::<usize>().ok()).unwrap_or(5);
+            // Word count may arrive as `action`, as the bare input ("3"), or as
+            // `words=N` inside the input ("words=3"). Default is 5.
+            let words = action
+                .and_then(|a| a.parse::<usize>().ok())
+                .or_else(|| input.parse::<usize>().ok())
+                .or_else(|| {
+                    input
+                        .strip_prefix("words=")
+                        .and_then(|w| w.parse::<usize>().ok())
+                })
+                .unwrap_or(5);
             lorem(words)
         }
         _ => format!("unknown tool: {}", slug),
@@ -430,9 +510,11 @@ pub fn run(slug: &str, input: &str, action: Option<&str>) -> String {
 }
 
 /// Derive a `count` argument from the `action` param for `replace`.
+/// Default is 1 (replace the first occurrence); `all` / a large value mean
+/// every occurrence.
 fn count_from_action(action: Option<&str>) -> usize {
     match action {
-        Some(a) if a == "all" => usize::MAX,
+        Some(a) if a.eq_ignore_ascii_case("all") => usize::MAX,
         Some(a) => a.parse::<usize>().unwrap_or(1),
         None => 1,
     }
@@ -462,6 +544,7 @@ mod tests {
         assert_eq!(collapse("a\n\n  b\tc"), "a b c");
     }
 
+    #[test]
     fn collapse_multi() {
         assert_eq!(collapse("a\n\n\n\nb"), "a b");
     }
@@ -538,15 +621,52 @@ mod tests {
 
     #[test]
     fn word_count_basic() {
-        assert_eq!(word_count("one two three"), "words:3 chars:13 lines:1 bytes:13");
+        assert_eq!(
+            word_count("one two three"),
+            "words: 3\nchars: 13\nlines: 1\nbytes: 13"
+        );
+    }
+
+    #[test]
+    fn word_count_multiline() {
+        assert_eq!(
+            word_count("a b\nc d e"),
+            "words: 5\nchars: 9\nlines: 2\nbytes: 9"
+        );
+    }
+
+    #[test]
+    fn case_default_camel() {
+        assert_eq!(case("hello world foo", None), "helloWorldFoo");
+    }
+
+    #[test]
+    fn run_lorem_word_count_variants() {
+        // `words=` in the input, bare number as input, and action override.
+        assert_eq!(
+            run("lorem", "words=3", None, None, None),
+            "lorem ipsum dolor"
+        );
+        assert_eq!(run("lorem", "3", None, None, None), "lorem ipsum dolor");
+        assert_eq!(
+            run("lorem", "", Some("4"), None, None),
+            "lorem ipsum dolor sit"
+        );
+        assert_eq!(
+            run("lorem", "", None, None, None),
+            "lorem ipsum dolor sit amet"
+        );
     }
 
     #[test]
     fn json_pretty_basic() {
-        assert_eq!(json_pretty(r#"{"a":1,"b":2}"#), r#"{
+        assert_eq!(
+            json_pretty(r#"{"a":1,"b":2}"#),
+            r#"{
   "a": 1,
   "b": 2
-}"#);
+}"#
+        );
     }
 
     #[test]
@@ -589,15 +709,86 @@ mod tests {
         assert_eq!(lorem(3), "lorem ipsum dolor");
     }
 
+    #[test]
     fn run_dispatch_variants() {
-        assert_eq!(run("uppercase", "hi", None), "HI");
-        assert_eq!(run("slug", "Hello World", None), "hello-world");
-        assert_eq!(run("title", "the quick brown", None), "The Quick Brown");
+        assert_eq!(run("uppercase", "hi", None, None, None), "HI");
+        assert_eq!(run("slug", "Hello World", None, None, None), "hello-world");
+        assert_eq!(
+            run("title", "the quick brown", None, None, None),
+            "The Quick Brown"
+        );
     }
 
     #[test]
     fn run_dispatch() {
-        assert_eq!(run("uppercase", "x", None), "X");
-        assert_eq!(run("unknown", "x", None), "unknown tool: unknown");
+        assert_eq!(run("uppercase", "x", None, None, None), "X");
+        assert_eq!(
+            run("unknown", "x", None, None, None),
+            "unknown tool: unknown"
+        );
+    }
+
+    #[test]
+    fn run_replace_dispatch() {
+        // `?input=aXbXc&find=X&replace=_&count=1` -> replace first `X`.
+        assert_eq!(run("replace", "aXbXc", None, Some("X"), Some("_")), "a_bXc");
+        // count=2 replaces both occurrences.
+        assert_eq!(
+            run("replace", "aXbXc", Some("2"), Some("X"), Some("_")),
+            "a_b_c"
+        );
+        // `all` replaces every occurrence.
+        assert_eq!(
+            run("replace", "aXbXc", Some("all"), Some("X"), Some("_")),
+            "a_b_c"
+        );
+    }
+
+    #[test]
+    fn run_replace_all_dispatch() {
+        assert_eq!(
+            run("replace-all", "aXbXc", None, Some("X"), Some("_")),
+            "a_b_c"
+        );
+    }
+
+    #[test]
+    fn run_case_dispatch() {
+        assert_eq!(
+            run("case", "hello world foo", None, None, None),
+            "helloWorldFoo"
+        );
+        assert_eq!(
+            run("case", "hello world foo", Some("snake"), None, None),
+            "hello_world_foo"
+        );
+    }
+
+    #[test]
+    fn collapse_multi_newlines() {
+        assert_eq!(collapse("a\n\n\n\tb"), "a b");
+    }
+
+    #[test]
+    fn replace_empty_find_returns_input() {
+        // An empty `find` with a non-empty `replace` matches nothing, so the
+        // input is echoed unchanged.
+        assert_eq!(run("replace", "abc", None, Some(""), Some("z")), "abc");
+    }
+
+    #[test]
+    fn run_replace_no_params_defaults_to_demo() {
+        // No params -> documented demo substitution (first `X` -> `_`).
+        assert_eq!(run("replace", "aXbXc", None, None, None), "a_bXc");
+    }
+
+    #[test]
+    fn run_replace_all_no_params_defaults_to_demo() {
+        assert_eq!(run("replace-all", "aXbXc", None, None, None), "a_b_c");
+    }
+
+    #[test]
+    fn run_replace_action_all() {
+        assert_eq!(run("replace", "aXbXc", Some("all"), None, None), "a_b_c");
     }
 }

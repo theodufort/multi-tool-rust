@@ -41,15 +41,33 @@ pub const CATALOG: &[(&str, &str)] = &[
     ("lorem", "Lorem Ipsum"),
 ];
 
-/// HTML list of `<li>` items for the sidebar.
+/// HTML `<a>` tiles for the home page grid (one per tool).
+pub fn home_tiles() -> String {
+    CATALOG
+        .iter()
+        .map(|(slug, label)| format!(
+            "          <a class=\"tool-tile\" href=\"/tool/{slug}\" data-slug=\"{slug}\" data-name=\"{label}\">{label}<small>/api/{slug}</small></a>\n"
+        ))
+        .collect()
+}
+
+/// Human-readable label for `slug`, falling back to the slug itself.
+pub fn tool_label(slug: &str) -> String {
+    CATALOG
+        .iter()
+        .find(|(s, _)| *s == slug)
+        .map(|(_, label)| label.to_string())
+        .unwrap_or_else(|| slug.to_string())
+}
+
+/// HTML `<li>` items for the sidebar (the `<ul>` lives in the templates).
 pub fn sidebar_links() -> String {
-    let mut s = String::from("        <ul class=\"nav flex-column\">");
+    let mut s = String::new();
     for (slug, label) in CATALOG {
         s.push_str(&format!(
             "          <li class=\"nav-item\">\n            <a class=\"nav-link\" href=\"/tool/{slug}\">{label}</a>\n          </li>\n"
         ));
     }
-    s.push_str("        </ul>");
     s
 }
 
@@ -57,61 +75,117 @@ pub fn sidebar_links() -> String {
 // Machine endpoints: `/api/<slug>`
 // ---------------------------------------------------------------------------
 
-// Rank breaks the query-string collision: both routes can match a URL that
-// carries an extra param, but Rocket only treats routes with an *equal* rank
-// as colliding. The more specific route wins by having the lower rank.
-// `rank` must differ from the mounted FileServer route (default rank 10,
-// `/<path..>`), which otherwise collides with every path. Lower ranks are
-// matched first, so the more specific routes win over their base routes.
-#[get("/api/<slug>?<input>&<action>", rank = 0)]
-pub fn api_with_action(slug: &str, input: Option<String>, action: Option<String>) -> String {
-    tools::run(slug, input.as_deref().unwrap_or(""), action.as_deref())
-}
-
-#[get("/api/<slug>?<input>", rank = 1)]
-pub fn api(slug: &str, input: Option<String>) -> String {
-    tools::run(slug, input.as_deref().unwrap_or(""), None)
+// All optional query params are declared on a single route so any subset of
+// them matches. Rocket ignores query params that a client sends but the route
+// does not declare, and binds a declared-but-absent `?{}` param to `None`, so
+// one route covers `?input=...`, `?input=...&action=...`,
+// `?input=...&find=...&replace=...`, etc.
+// `rank` keeps this ahead of the mounted FileServer route (default rank 10,
+// `/<path..>`), which otherwise collides with every path.
+#[get("/api/<slug>?<input>&<find>&<replace>&<action>", rank = 0)]
+pub fn api(
+    slug: &str,
+    input: Option<String>,
+    find: Option<String>,
+    replace: Option<String>,
+    action: Option<String>,
+) -> String {
+    tools::run(
+        slug,
+        input.as_deref().unwrap_or(""),
+        action.as_deref(),
+        find.as_deref(),
+        replace.as_deref(),
+    )
 }
 
 // ---------------------------------------------------------------------------
 // UI endpoints: `/tool/<slug>`
 // ---------------------------------------------------------------------------
 
-#[get("/tool/<slug>?<input>&<output>&<action>", rank = 0)]
-pub fn tool_full(slug: &str, input: Option<String>, output: Option<String>, action: Option<String>) -> Template {
+/// Template context shared by all `/tool/<slug>` route variants.
+fn tool_context(
+    slug: &str,
+    input: String,
+    output: String,
+    action: Option<String>,
+    find: Option<String>,
+    repl: Option<String>,
+) -> rocket_dyn_templates::Template {
+    let needs_find_replace = slug == "replace" || slug == "replace-all";
+    let needs_action = slug == "case";
+    let action = action.unwrap_or_default();
     Template::render(
         "tool",
         context! {
             title: slug,
-            input: input.unwrap_or_default(),
-            output: output.unwrap_or_default(),
-            action: action,
+            label: tool_label(slug),
+            input,
+            output,
+            action: action.clone(),
+            find: find.unwrap_or_default(),
+            replace: repl.unwrap_or_default(),
+            needs_find_replace,
+            needs_action,
+            sel_camel: action == "camel" || action.is_empty(),
+            sel_snake: action == "snake",
+            sel_kebab: action == "kebab",
+            sel_pascal: action == "pascal",
+            sidebar: sidebar_links(),
         },
     )
 }
 
-#[get("/tool/<slug>?<input>&<output>", rank = 1)]
+/// Most-specific tool route: carries the full URL state
+/// (`?input=...&find=...&replace=...&action=...`) so the server-rendered
+/// output matches what the page's client-side re-run would produce.
+#[get("/tool/<slug>?<input>&<find>&<replace>&<action>", rank = 1)]
+pub fn tool_find_replace(
+    slug: &str,
+    input: Option<String>,
+    find: Option<String>,
+    replace: Option<String>,
+    action: Option<String>,
+) -> Template {
+    let input = input.unwrap_or_default();
+    let output = tools::run(
+        slug,
+        &input,
+        action.as_deref(),
+        find.as_deref(),
+        replace.as_deref(),
+    );
+    tool_context(slug, input, output, action, find, replace)
+}
+
+#[get("/tool/<slug>?<input>&<output>&<action>", rank = 2)]
+pub fn tool_full(
+    slug: &str,
+    input: Option<String>,
+    output: Option<String>,
+    action: Option<String>,
+) -> Template {
+    let input = input.unwrap_or_default();
+    let (output, action) = match output {
+        Some(o) => (o, action),
+        None => (
+            tools::run(slug, &input, action.as_deref(), None, None),
+            action,
+        ),
+    };
+    tool_context(slug, input, output, action, None, None)
+}
+
+#[get("/tool/<slug>?<input>&<output>", rank = 3)]
 pub fn tool_output(slug: &str, input: Option<String>, output: Option<String>) -> Template {
-    Template::render(
-        "tool",
-        context! {
-            title: slug,
-            input: input.unwrap_or_default(),
-            output: output.unwrap_or_default(),
-            action: None::<String>,
-        },
-    )
+    let input = input.unwrap_or_default();
+    let output = output.unwrap_or_else(|| tools::run(slug, &input, None, None, None));
+    tool_context(slug, input, output, None, None, None)
 }
 
-#[get("/tool/<slug>?<input>", rank = 2)]
+#[get("/tool/<slug>?<input>", rank = 4)]
 pub fn tool(slug: &str, input: Option<String>) -> Template {
-    Template::render(
-        "tool",
-        context! {
-            title: slug,
-            input: input.unwrap_or_default(),
-            output: String::new(),
-            action: None::<String>,
-        },
-    )
+    let input = input.unwrap_or_default();
+    let output = tools::run(slug, &input, None, None, None);
+    tool_context(slug, input, output, None, None, None)
 }

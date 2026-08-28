@@ -8,6 +8,7 @@ pub fn index(uri: &Origin<'_>) -> Template {
         context! {
             uri: uri,
             sidebar: super::tools::sidebar_links(),
+            tiles: super::tools::home_tiles(),
         },
     )
 }

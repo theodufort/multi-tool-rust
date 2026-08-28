@@ -1,11 +1,14 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>404</title>
-  </head>
-  <body>
-    <h1>404: Hey! There's nothing here.</h1>
-    The page at {{ uri }} does not exist!
-  </body>
-</html>
+{{#*inline "page"}}
+<div class="container-fluid">
+  <div class="row">
+    {{> sidebar}}
+    <main role="main" class="col-md-9 ml-sm-auto col-lg-10 pt-3 px-4">
+      <div class="page-404">
+        <div class="display-4">404</div>
+        <p>Nothing lives at <code>{{ uri }}</code>. Pick a tool from the sidebar instead.</p>
+        <a class="btn-link-home" href="/">Back to all tools &rarr;</a>
+      </div>
+    </main>
+  </div>
+</div>
+{{/inline}} {{> layout}}

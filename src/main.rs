@@ -16,8 +16,8 @@ fn rocket() -> _ {
         .mount(
             "/",
             routes![
-                routes::tools::api_with_action,
                 routes::tools::api,
+                routes::tools::tool_find_replace,
                 routes::tools::tool_full,
                 routes::tools::tool_output,
                 routes::tools::tool,
