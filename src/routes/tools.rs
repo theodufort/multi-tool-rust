@@ -82,7 +82,7 @@ pub fn sidebar_links() -> String {
 // `?input=...&find=...&replace=...`, etc.
 // `rank` keeps this ahead of the mounted FileServer route (default rank 10,
 // `/<path..>`), which otherwise collides with every path.
-#[get("/api/<slug>?<input>&<find>&<replace>&<action>", rank = 0)]
+#[get("/api/<slug>?<input>&<find>&<replace>&<action>", rank = 1)]
 pub fn api(
     slug: &str,
     input: Option<String>,
@@ -97,6 +97,57 @@ pub fn api(
         find.as_deref(),
         replace.as_deref(),
     )
+}
+
+/// Benchmark tools and print per-tool timing.
+///
+/// `?input=...` sets the sample text (default `"hello world"`); `?iterations=N`
+/// sets how many times each tool runs (default 1000). Pass `?slug=<slug>` to
+/// benchmark a single tool; omit it to benchmark every registered tool.
+///
+/// Output is plain text, one line per tool:
+/// `slug  avg_ms  total_ms  iterations`.
+#[get("/api/benchmark?<slug>&<input>&<iterations>", rank = 0)]
+pub fn benchmark(slug: Option<String>, input: Option<String>, iterations: Option<u32>) -> String {
+    let input = input.unwrap_or_else(|| "hello world".to_string());
+    let iterations = iterations.unwrap_or(1000);
+    let tool_input = crate::types::tools::ToolInput::new(input);
+    let reg = tools::registry();
+
+    // Benchmark a single tool when `slug` is given.
+    if let Some(slug) = slug {
+        return match reg.benchmark(&slug, &tool_input, iterations) {
+            Some(b) => format!(
+                "benchmarking {} ({} iterations)\n{:<16} {:>10.4} ms/op  {:>10.4} ms total  ({} iters)",
+                b.tool,
+                b.iterations,
+                b.tool,
+                b.avg_ms(),
+                b.total_time * 1000.0,
+                b.iterations
+            ),
+            None => format!("unknown tool: {}", slug),
+        };
+    }
+
+    // Otherwise benchmark every registered tool.
+    let mut lines = vec![format!(
+        "benchmarking {} tools, {} iterations each",
+        reg.len(),
+        iterations
+    )];
+    for slug in reg.slugs() {
+        if let Some(b) = reg.benchmark(slug, &tool_input, iterations) {
+            lines.push(format!(
+                "{:<16} {:>10.4} ms/op  {:>10.4} ms total  ({} iters)",
+                b.tool,
+                b.avg_ms(),
+                b.total_time * 1000.0,
+                b.iterations
+            ));
+        }
+    }
+    lines.join("\n")
 }
 
 // ---------------------------------------------------------------------------

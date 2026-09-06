@@ -4,6 +4,8 @@ extern crate rocket_dyn_templates;
 
 mod routes;
 mod tools;
+pub mod utils;
+mod types;
 
 use rocket::fs::{FileServer, relative};
 use rocket_dyn_templates::Template;
@@ -17,6 +19,7 @@ fn rocket() -> _ {
             "/",
             routes![
                 routes::tools::api,
+                routes::tools::benchmark,
                 routes::tools::tool_find_replace,
                 routes::tools::tool_full,
                 routes::tools::tool_output,

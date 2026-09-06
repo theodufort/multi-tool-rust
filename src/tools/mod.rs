@@ -13,6 +13,7 @@ pub mod html;
 pub mod json;
 pub mod lorem;
 pub mod lower;
+pub mod registry;
 pub mod replace;
 pub mod reverse;
 pub mod slug;
@@ -21,26 +22,9 @@ pub mod trim;
 pub mod unicode_strip;
 pub mod upper;
 pub mod url;
-pub mod util;
 pub mod word_count;
 
-pub use base64::{base64_decode, base64_encode};
-pub use case::case;
-pub use collapse::collapse;
-pub use hex::{hex_decode, hex_encode};
-pub use html::{html_decode, html_encode};
-pub use json::{json_minify, json_pretty};
-pub use lorem::lorem;
-pub use lower::lowercase;
-pub use replace::{replace, replace_all};
-pub use reverse::reverse;
-pub use slug::slug;
-pub use title::title;
-pub use trim::trim;
-pub use unicode_strip::unicode_strip;
-pub use upper::uppercase;
-pub use url::{url_decode, url_encode};
-pub use word_count::word_count;
+pub use registry::build_registry;
 
 /// Dispatch to the transform for `slug`. Returns the output, or a short error
 /// string if the slug is unknown.
@@ -48,66 +32,39 @@ pub use word_count::word_count;
 /// `action` is used by `case` (camel/snake/kebab/pascal), `lorem` (word count)
 /// and `replace` (occurrence count). `find` and `replace` feed the two find-and-
 /// replace tools.
+///
+/// This is a thin wrapper over the object-oriented [`ToolRegistry`]: it builds
+/// the registry once (lazily), converts the positional args into a
+/// [`ToolInput`], and returns the [`ToolOutput::result`]. Callers that need the
+/// timing/error metadata should use the registry directly.
 pub fn run(
-    slug: &str,
+    url_slug: &str,
     input: &str,
     action: Option<&str>,
     find: Option<&str>,
     repl: Option<&str>,
 ) -> String {
-    let find = find.unwrap_or("");
-    let repl = repl.unwrap_or("");
-    if (slug == "replace" || slug == "replace-all") && find.is_empty() && repl.is_empty() {
-        // No `find`/`replace` params supplied: apply the documented demo
-        // substitution (first `X` -> `_`, or every occurrence for
-        // `replace-all`). Keeps the endpoint deterministic and matching the
-        // catalog example, e.g. `aXbXc -> a_bXc`.
-        let count = if slug == "replace-all" {
-            usize::MAX
-        } else {
-            replace::count_from_action(action)
-        };
-        return replace(input, "X", "_", count);
-    }
-    match slug {
-        "replace" => replace(input, find, repl, replace::count_from_action(action)),
-        "replace-all" => replace_all(input, find, repl),
-        "collapse" => collapse(input),
-        "uppercase" => uppercase(input),
-        "lowercase" => lowercase(input),
-        "title" => title(input),
-        "reverse" => reverse(input),
-        "trim" => trim(input),
-        "url-encode" => url_encode(input),
-        "url-decode" => url_decode(input),
-        "html-encode" => html_encode(input),
-        "html-decode" => html_decode(input),
-        "hex-encode" => hex_encode(input),
-        "hex-decode" => hex_decode(input),
-        "base64-encode" => base64_encode(input),
-        "base64-decode" => base64_decode(input),
-        "unicode-strip" => unicode_strip(input),
-        "word-count" => word_count(input),
-        "json-pretty" => json_pretty(input),
-        "json-minify" => json_minify(input),
-        "slug" => crate::tools::slug(input),
-        "case" => case(input, action),
-        "lorem" => {
-            // Word count may arrive as `action`, as the bare input ("3"), or as
-            // `words=N` inside the input ("words=3"). Default is 5.
-            let words = action
-                .and_then(|a| a.parse::<usize>().ok())
-                .or_else(|| input.parse::<usize>().ok())
-                .or_else(|| {
-                    input
-                        .strip_prefix("words=")
-                        .and_then(|w| w.parse::<usize>().ok())
-                })
-                .unwrap_or(5);
-            lorem(words)
-        }
-        _ => format!("unknown tool: {}", slug),
-    }
+    let tool_input = crate::types::tools::ToolInput {
+        input: input.to_string(),
+        action: action.map(str::to_string),
+        find: find.map(str::to_string),
+        replace: repl.map(str::to_string),
+    };
+    registry()
+        .run(url_slug, &tool_input)
+        .map(|out| out.result)
+        .unwrap_or_else(|| format!("unknown tool: {}", url_slug))
+}
+
+/// Lazily-built, process-wide [`ToolRegistry`] with every tool registered.
+///
+/// Built once on first use and reused thereafter, so dispatch is a single
+/// lookup. Use this directly when you need [`ToolOutput`] metadata (timing,
+/// errors) or want to benchmark tools.
+pub fn registry() -> &'static crate::types::tools::ToolRegistry {
+    use std::sync::OnceLock;
+    static REGISTRY: OnceLock<crate::types::tools::ToolRegistry> = OnceLock::new();
+    REGISTRY.get_or_init(build_registry)
 }
 
 #[cfg(test)]

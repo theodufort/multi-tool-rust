@@ -1,6 +1,6 @@
 //! Case conversion (camel, snake, kebab, pascal).
 
-use crate::tools::util::uppercase_first;
+use crate::utils::uppercase_first;
 
 /// Convert text to a target case (camel, snake, kebab, pascal).
 /// Defaults to `camel` when no action is given.

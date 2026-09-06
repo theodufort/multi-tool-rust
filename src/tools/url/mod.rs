@@ -1,6 +1,6 @@
 //! URL percent-encoding / decoding.
 
-use crate::tools::util::hex_val;
+use crate::utils::hex_val;
 
 /// Percent-encode spaces as `+`; every non-ASCII byte becomes `%XX`.
 pub fn url_encode(input: &str) -> String {

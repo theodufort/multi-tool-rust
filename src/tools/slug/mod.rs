@@ -1,6 +1,4 @@
 //! Slugify: lowercase, replace runs of non-alphanumeric chars with `-`.
-
-/// Slugify: lowercase, replace runs of non-alphanumeric chars with `-`, trim.
 pub fn slug(input: &str) -> String {
     let mut out = String::new();
     let mut in_run = false;

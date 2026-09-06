@@ -1,6 +1,6 @@
 //! Hex encoding / decoding.
 
-use crate::tools::util::hex_val;
+use crate::utils::hex_val;
 
 /// Lowercase hex-encode a UTF-8 string.
 pub fn hex_encode(input: &str) -> String {
