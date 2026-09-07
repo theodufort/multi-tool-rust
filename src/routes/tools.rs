@@ -97,6 +97,7 @@ pub fn api(
         find.as_deref(),
         replace.as_deref(),
     )
+    .result
 }
 
 /// Benchmark tools and print per-tool timing.
@@ -154,6 +155,15 @@ pub fn benchmark(slug: Option<String>, input: Option<String>, iterations: Option
 // UI endpoints: `/tool/<slug>`
 // ---------------------------------------------------------------------------
 
+/// Format a millisecond value with up to 4 decimal places, stripping
+/// trailing zeros (and a dangling decimal point). e.g.
+/// `0.002499.. -> "0.0025"`, `1.5000 -> "1.5"`, `2.0000 -> "2"`.
+fn format_ms(value: f32) -> String {
+    let s = format!("{:.4}", value);
+    let trimmed = s.trim_end_matches('0').trim_end_matches('.');
+    trimmed.to_string()
+}
+
 /// Template context shared by all `/tool/<slug>` route variants.
 fn tool_context(
     slug: &str,
@@ -162,6 +172,7 @@ fn tool_context(
     action: Option<String>,
     find: Option<String>,
     repl: Option<String>,
+    speed_result: Option<String>,
 ) -> rocket_dyn_templates::Template {
     let needs_find_replace = slug == "replace" || slug == "replace-all";
     let needs_action = slug == "case";
@@ -183,6 +194,7 @@ fn tool_context(
             sel_kebab: action == "kebab",
             sel_pascal: action == "pascal",
             sidebar: sidebar_links(),
+            speed_result
         },
     )
 }
@@ -199,14 +211,16 @@ pub fn tool_find_replace(
     action: Option<String>,
 ) -> Template {
     let input = input.unwrap_or_default();
-    let output = tools::run(
+    let tool_output = tools::run(
         slug,
         &input,
         action.as_deref(),
         find.as_deref(),
         replace.as_deref(),
     );
-    tool_context(slug, input, output, action, find, replace)
+    let output = tool_output.result;
+    let speed_result = Some(format_ms(tool_output.execution_time * 1000.0));
+    tool_context(slug, input, output, action, find, replace, speed_result)
 }
 
 #[get("/tool/<slug>?<input>&<output>&<action>", rank = 2)]
@@ -217,26 +231,36 @@ pub fn tool_full(
     action: Option<String>,
 ) -> Template {
     let input = input.unwrap_or_default();
-    let (output, action) = match output {
-        Some(o) => (o, action),
-        None => (
-            tools::run(slug, &input, action.as_deref(), None, None),
-            action,
-        ),
+    // An output supplied via the query string carries no measured time.
+    let (output, speed_result) = match output {
+        Some(o) => (o, None),
+        None => {
+            let tool_output = tools::run(slug, &input, action.as_deref(), None, None);
+            (tool_output.result, Some(format_ms(tool_output.execution_time * 1000.0)))
+        }
     };
-    tool_context(slug, input, output, action, None, None)
+    tool_context(slug, input, output, action, None, None, speed_result)
 }
 
 #[get("/tool/<slug>?<input>&<output>", rank = 3)]
 pub fn tool_output(slug: &str, input: Option<String>, output: Option<String>) -> Template {
     let input = input.unwrap_or_default();
-    let output = output.unwrap_or_else(|| tools::run(slug, &input, None, None, None));
-    tool_context(slug, input, output, None, None, None)
+    // An output supplied via the query string carries no measured time.
+    let (output, speed_result) = match output {
+        Some(o) => (o, None),
+        None => {
+            let tool_output = tools::run(slug, &input, None, None, None);
+            (tool_output.result, Some(format_ms(tool_output.execution_time * 1000.0)))
+        }
+    };
+    tool_context(slug, input, output, None, None, None, speed_result)
 }
 
 #[get("/tool/<slug>?<input>", rank = 4)]
 pub fn tool(slug: &str, input: Option<String>) -> Template {
     let input = input.unwrap_or_default();
-    let output = tools::run(slug, &input, None, None, None);
-    tool_context(slug, input, output, None, None, None)
+    let tool_output = tools::run(slug, &input, None, None, None);
+    let output = tool_output.result;
+    let speed_result = Some(format_ms(tool_output.execution_time * 1000.0));
+    tool_context(slug, input, output, None, None, None, speed_result)
 }
